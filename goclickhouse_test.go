@@ -1,4 +1,4 @@
-package gotests_test
+package gotests
 
 import (
 	"context"
@@ -7,13 +7,13 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
-func BenchmarkTestGoclickhouseSelect100MUint64(b *testing.B) {
+func BenchmarkTestGoClickhouseSelect100MUint64(b *testing.B) {
 	c, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{"127.0.0.1:9000"},
 		Auth: clickhouse.Auth{
 			Database: "default",
 			Username: "default",
-			Password: "salam",
+			Password: "",
 		},
 	})
 	if err != nil {
@@ -27,17 +27,21 @@ func BenchmarkTestGoclickhouseSelect100MUint64(b *testing.B) {
 		}
 		var count int
 		for rows.Next() {
+			var value uint64
+			if err := rows.Scan(&value); err != nil {
+				b.Fatal(err)
+			}
 			count++
 		}
 	}
 }
-func BenchmarkTestGoclickhouseSelect1MString(b *testing.B) {
+func BenchmarkTestGoClickhouseSelect10MString(b *testing.B) {
 	c, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{"127.0.0.1:9000"},
 		Auth: clickhouse.Auth{
 			Database: "default",
 			Username: "default",
-			Password: "salam",
+			Password: "",
 		},
 	})
 	if err != nil {
@@ -45,25 +49,26 @@ func BenchmarkTestGoclickhouseSelect1MString(b *testing.B) {
 	}
 
 	for n := 0; n < b.N; n++ {
-		rows, err := c.Query(context.Background(), "SELECT randomString(20) FROM system.numbers_mt LIMIT 1000000")
+		rows, err := c.Query(context.Background(), "SELECT toString(number) FROM system.numbers_mt LIMIT 10000000")
 		if err != nil {
 			b.Fatal(err)
 		}
-		var count int
 		for rows.Next() {
-			count++
+			var value string
+			if err := rows.Scan(&value); err != nil {
+				b.Fatal(err)
+			}
 		}
 	}
 }
 
-func BenchmarkTestGoclickhouseInsert10M(b *testing.B) {
-	// return
+func BenchmarkTestGoClickhouseInsert10M(b *testing.B) {
 	c, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{"127.0.0.1:9000"},
 		Auth: clickhouse.Auth{
 			Database: "default",
 			Username: "default",
-			Password: "salam",
+			Password: "",
 		},
 	})
 	if err != nil {
@@ -73,13 +78,13 @@ func BenchmarkTestGoclickhouseInsert10M(b *testing.B) {
 	ctx := context.Background()
 
 	err = c.Exec(ctx, `
-		DROP TABLE IF EXISTS test_insert_go_goclickhouse
+		DROP TABLE IF EXISTS test_insert_go_goClickhouse
 	`)
 	if err != nil {
 		b.Fatal(err)
 	}
 	err = c.Exec(ctx, `
-			CREATE TABLE test_insert_go_goclickhouse (id UInt64,v String) ENGINE = Null
+			CREATE TABLE test_insert_go_goClickhouse (id UInt64,v String) ENGINE = Null
 	`)
 	if err != nil {
 		b.Fatal(err)
@@ -89,17 +94,17 @@ func BenchmarkTestGoclickhouseInsert10M(b *testing.B) {
 		rowsInBlock = 10_000_000
 	)
 	var (
-		col1 []uint64
-		col2 []string
+		col1 = make([]uint64, 0, rowsInBlock)
+		col2 = make([]string, 0, rowsInBlock)
 	)
 	for n := 0; n < b.N; n++ {
 		col1 = col1[:0]
 		col2 = col2[:0]
 		for i := 0; i < rowsInBlock; i++ {
-			col1 = append(col1, 1)
+			col1 = append(col1, uint64(i))
 			col2 = append(col2, "test")
 		}
-		batch, err := c.PrepareBatch(ctx, "INSERT INTO test_insert_go_goclickhouse VALUES")
+		batch, err := c.PrepareBatch(ctx, "INSERT INTO test_insert_go_goClickhouse VALUES")
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -1,39 +1,29 @@
-package gotests_test
+package gotests
 
 import (
 	"context"
 	"testing"
 
-	"github.com/vahid-sohrabloo/chconn"
-	"github.com/vahid-sohrabloo/chconn/column"
+	"github.com/vahid-sohrabloo/chconn/v2"
+	"github.com/vahid-sohrabloo/chconn/v2/column"
 )
 
 func BenchmarkTestChconnSelect100MUint64(b *testing.B) {
 	// return
 	ctx := context.Background()
-	c, err := chconn.Connect(ctx, "password=salam")
+	c, err := chconn.Connect(ctx, "")
 	if err != nil {
 		b.Fatal(err)
 	}
-	// var datStr [][]byte
-	colRead := column.NewUint64(false)
+	colRead := column.New[uint64]()
 	for n := 0; n < b.N; n++ {
-		s, err := c.Select(ctx, "SELECT number FROM system.numbers_mt LIMIT 100000000")
+		s, err := c.Select(ctx, "SELECT number FROM system.numbers_mt LIMIT 100000000", colRead)
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		// colReadStr := column.NewString(false)
 		for s.Next() {
-			if err := s.NextColumn(colRead); err != nil {
-				b.Fatal(err)
-			}
-			colRead.GetAllUnsafe()
-			// if err := s.NextColumn(colReadStr); err != nil {
-			// 	b.Fatal(err)
-			// }
-			// datStr = datStr[:0]
-			// colReadStr.ReadAll(&datStr)
+			_ = colRead.Data()
 		}
 		if err := s.Err(); err != nil {
 			b.Fatal(err)
@@ -42,28 +32,25 @@ func BenchmarkTestChconnSelect100MUint64(b *testing.B) {
 	}
 }
 
-func BenchmarkTestChconnSelect1MString(b *testing.B) {
+func BenchmarkTestChconnSelect10MString(b *testing.B) {
 	// return
 	ctx := context.Background()
-	c, err := chconn.Connect(ctx, "password=salam")
+	c, err := chconn.Connect(ctx, "")
 	if err != nil {
 		b.Fatal(err)
 	}
 	// var datStr [][]byte
-	colRead := column.NewString(false)
-	var data [][]byte
+	colRead := column.NewString()
 	for n := 0; n < b.N; n++ {
-		s, err := c.Select(ctx, "SELECT randomString(20) FROM system.numbers_mt LIMIT 1000000")
+		s, err := c.Select(ctx, "SELECT toString(number) FROM system.numbers_mt LIMIT 10000000", colRead)
 		if err != nil {
 			b.Fatal(err)
 		}
 
 		for s.Next() {
-			data = data[:0]
-			if err := s.NextColumn(colRead); err != nil {
-				b.Fatal(err)
-			}
-			colRead.ReadAll(&data)
+			colRead.Each(func(i int, b []byte) bool {
+				return true
+			})
 		}
 		if err := s.Err(); err != nil {
 			b.Fatal(err)
@@ -75,15 +62,15 @@ func BenchmarkTestChconnSelect1MString(b *testing.B) {
 func BenchmarkTestChconnInsert10M(b *testing.B) {
 	// return
 	ctx := context.Background()
-	c, err := chconn.Connect(ctx, "password=salam")
+	c, err := chconn.Connect(ctx, "")
 	if err != nil {
 		b.Fatal(err)
 	}
-	_, err = c.Exec(ctx, "DROP TABLE IF EXISTS test_insert_chconn")
+	err = c.Exec(ctx, "DROP TABLE IF EXISTS test_insert_chconn")
 	if err != nil {
 		b.Fatal(err)
 	}
-	_, err = c.Exec(ctx, "CREATE TABLE test_insert_chconn (id UInt64,v String) ENGINE = Null")
+	err = c.Exec(ctx, "CREATE TABLE test_insert_chconn (id UInt64,v String) ENGINE = Null")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -92,14 +79,14 @@ func BenchmarkTestChconnInsert10M(b *testing.B) {
 		rowsInBlock = 10_000_000
 	)
 
-	idColumns := column.NewUint64(false)
-	vColumns := column.NewString(false)
+	idColumns := column.New[uint64]()
+	vColumns := column.NewString()
+	idColumns.SetWriteBufferSize(rowsInBlock)
+	vColumns.SetWriteBufferSize(rowsInBlock * 5)
 	for n := 0; n < b.N; n++ {
-		idColumns.Reset()
-		vColumns.Reset()
 		for y := 0; y < rowsInBlock; y++ {
-			idColumns.Append(1)
-			vColumns.Append([]byte("test"))
+			idColumns.Append(uint64(y))
+			vColumns.AppendBytes([]byte("test"))
 		}
 		err := c.Insert(ctx, "INSERT INTO test_insert_chconn VALUES", idColumns, vColumns)
 		if err != nil {
