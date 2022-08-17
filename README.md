@@ -12,8 +12,6 @@ go test  -run=. -bench=. -benchtime=5x   -benchmem
 
 ```
 
-You  can also see [ch-bench](https://github.com/go-faster/ch-bench#benchmarks)
-
 
 
 ## Result
