@@ -1,5 +1,5 @@
 # Benchmark
-([chconn](https://github.com/vahid-sohrabloo/chconn), [ch-go](github.com/ClickHouse/ch-go), [goclickhhouse](https://github.com/ClickHouse/clickhouse-go), [uptrace](https://github.com/uptrace/go-clickhouse))
+([chconn](https://github.com/vahid-sohrabloo/chconn), [ch-go](https://github.com/ClickHouse/ch-go), [goclickhhouse](https://github.com/ClickHouse/clickhouse-go), [uptrace](https://github.com/uptrace/go-clickhouse))
 
 See their website if you are unfamiliar with ClickHouse:
 [https://clickhouse.com/](https://clickhouse.com/)
